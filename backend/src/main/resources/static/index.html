@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AnonChat Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+    <h2>AnonChat Smoke Test</h2>
+    <div id="status">Status: Disconnected</div>
+    <br/>
+    <input type="text" id="message" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
+
+    <h3>Messages:</h3>
+    <ul id="messageArea"></ul>
+
+    <script>
+        var stompClient = null;
+
+        // 1. Connect automatically when page loads
+        function connect() {
+            var socket = new SockJS('/ws'); // Matches our Config
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, function (frame) {
+                document.getElementById('status').innerText = 'Status: Connected';
+                console.log('Connected: ' + frame);
+
+                // 2. Subscribe to the Public Topic
+                stompClient.subscribe('/topic/public', function (message) {
+                    showMessage(JSON.parse(message.body));
+                });
+
+                // 3. Tell the server we joined
+                stompClient.send("/app/chat.addUser", {}, JSON.stringify({sender: "TestUser", type: 'JOIN'}));
+            });
+        }
+
+        // 4. Send a Chat Message
+        function sendMessage() {
+            var messageContent = document.getElementById('message').value;
+            if (messageContent && stompClient) {
+                var chatMessage = {
+                    sender: "TestUser",
+                    content: messageContent,
+                    type: 'CHAT'
+                };
+                stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+                document.getElementById('message').value = '';
+            }
+        }
+
+        function showMessage(message) {
+            var messageArea = document.getElementById('messageArea');
+            var li = document.createElement('li');
+            li.appendChild(document.createTextNode(message.sender + ": " + message.content));
+            messageArea.appendChild(li);
+        }
+
+        connect(); // Start connection immediately
+    </script>
+</body>
+</html>
