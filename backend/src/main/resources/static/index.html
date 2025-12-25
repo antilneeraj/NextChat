@@ -34,22 +34,46 @@
         var username = document.getElementById('username').value;
         currentRoomId = roomId;
 
+        // Feedback for the user
+        document.getElementById('status').innerText = 'Loading Room...';
+
         var socket = new SockJS('/ws');
         stompClient = Stomp.over(socket);
 
         stompClient.connect({}, function (frame) {
-            document.getElementById('status').innerText = 'Status: Connected to ' + roomId;
+            document.getElementById('status').innerText = 'Connected to ' + roomId;
 
-            // Subscribe to the specific Room Topic
+            // Subscribe to the Room Topic FIRST (to ensure we don't miss live events)
             stompClient.subscribe('/topic/' + roomId, function (message) {
                 showMessage(JSON.parse(message.body));
             });
 
-            // Tell the server we joined
-            stompClient.send("/app/chat/" + roomId + "/addUser",
-                {},
-                JSON.stringify({sender: username, type: 'JOIN'})
-            );
+            // CHAINING: Fetch History -> Then Render -> Then Send Join
+            fetch('/api/history/' + roomId)
+                .then(response => response.json())
+                .then(data => {
+                    console.log("History loaded, rendering...");
+
+                    // A. Render the past messages first
+                    data.forEach(msg => {
+                        showMessage(msg);
+                    });
+
+                    // B. ONLY NOW, tell the server "I have joined"
+                    // This ensures 'User Joined' always appears at the BOTTOM
+                    stompClient.send("/app/chat/" + roomId + "/addUser",
+                        {},
+                        JSON.stringify({sender: username, type: 'JOIN'})
+                    );
+                })
+                .catch(err => {
+                    console.error("Failed to load history:", err);
+                    // Even if history fails, we should still let the user join
+                    stompClient.send("/app/chat/" + roomId + "/addUser",
+                        {},
+                        JSON.stringify({sender: username, type: 'JOIN'})
+                    );
+                });
         });
     }
 
