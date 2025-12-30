@@ -32,4 +32,45 @@ public class ChatService {
 
         return redisTemplate.opsForList().range(key, 0, -1);
     }
+
+    public void deleteRoom(String roomId) {
+        // Delete the Message History
+        redisTemplate.delete("room:" + roomId);
+
+        // Delete the Owner Key too!
+        // This allows the next person who joins to claim ownership.
+        redisTemplate.delete("room:" + roomId + ":owner");
+    }
+
+    public String attemptToClaimRoom(String roomId) {
+        String key = "room:" + roomId + ":owner";
+        String token = java.util.UUID.randomUUID().toString();
+
+        Boolean isNewOwner = redisTemplate.opsForValue()
+                .setIfAbsent(key, token, java.time.Duration.ofHours(1));
+
+        if (Boolean.TRUE.equals(isNewOwner))
+            return token;
+        else
+            return null;
+    }
+
+    public boolean verifyOwner(String roomId, String token) {
+        String key = "room:" + roomId + ":owner";
+        String storedToken = (String) redisTemplate.opsForValue().get(key);
+        return storedToken != null && storedToken.equals(token);
+    }
+
+    public void userJoined(String roomId) {
+        redisTemplate.opsForValue().increment("room:" + roomId + ":count", 1);
+    }
+
+    public void userLeft(String roomId) {
+        Long count = redisTemplate.opsForValue().decrement("room:" + roomId + ":count", 1);
+        if (count != null && count <= 0) {
+            // Room is empty! Reset ownership.
+            redisTemplate.delete("room:" + roomId + ":count");
+            redisTemplate.delete("room:" + roomId + ":owner");
+        }
+    }
 }

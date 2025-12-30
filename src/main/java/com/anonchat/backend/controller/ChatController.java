@@ -68,6 +68,7 @@ public class ChatController {
         }
 
         chatMessage.setType(ChatMessage.MessageType.JOIN);
+        chatMessage.setContent("joined the room.");
 
 //        String ipAddress = (String) headerAccessor.getSessionAttributes().get("IP_ADDRESS");
 //        if (rateLimitService.isBanned(ipAddress)) {

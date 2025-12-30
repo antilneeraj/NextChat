@@ -186,6 +186,12 @@
             background: #2980b9;
         }
 
+        #deleteBtn {
+            display: none;
+            background-color: #c0392b;
+            margin-top: 10px;
+        }
+
     </style>
 </head>
 <body>
@@ -201,6 +207,7 @@
         <input type="text" id="username" placeholder="Enter name...">
 
         <button onclick="connect()">🚀 Join Room</button>
+        <button id="deleteBtn" onclick="deleteRoom()">🗑️ Delete Room</button>
         <button class="secondary-btn" onclick="downloadPdf()">📄 Export PDF</button>
 
         <div id="status">🔴 Disconnected</div>
@@ -221,6 +228,7 @@
     var stompClient = null;
     var currentRoomId = null;
     var myUsername = null;
+    var ownerToken = null;
 
     // Handle Enter Key to Send
     document.getElementById("message").addEventListener("keypress", function (event) {
@@ -233,10 +241,23 @@
         var roomId = document.getElementById('roomId').value;
         var username = document.getElementById('username').value;
 
-        if (!username) {
-            alert("Please enter a username!");
+        if (!username || !roomId) {
+            alert("Enter details!");
             return;
         }
+
+        fetch('/api/room/' + roomId + '/claim', {method: 'POST'})
+            .then(res => res.json())
+            .then(data => {
+                if (data.role === 'OWNER') {
+                    ownerToken = data.token;
+                    document.getElementById('deleteBtn').style.display = 'block';
+                    alert("👑 You are the Room Owner! You can delete this room.");
+                } else {
+                    ownerToken = null;
+                    document.getElementById('deleteBtn').style.display = 'none';
+                }
+            });
 
         currentRoomId = roomId;
         myUsername = username;
@@ -298,6 +319,12 @@
         var messageArea = document.getElementById('messageArea');
         var li = document.createElement('li');
 
+        if (message.sender === "System" && message.content.includes("Room has been deleted")) {
+            alert("⚠️ The room was deleted by the owner.");
+            location.reload(); // Refresh the page to clear everything for everyone
+            return; // Stop processing
+        }
+
         if (message.type === 'JOIN') {
             li.classList.add('event-message');
             li.textContent = message.sender + " joined the room";
@@ -333,6 +360,33 @@
 
         messageArea.appendChild(li);
         messageArea.scrollTop = messageArea.scrollHeight; // Auto-scroll to bottom
+    }
+
+    function deleteRoom() {
+        var roomId = document.getElementById('roomId').value;
+
+        if (!ownerToken) {
+            alert("You are not the owner!");
+            return;
+        }
+
+        if (confirm("⚠️ OWNER ACTION: Permanently delete this room?")) {
+            fetch('/api/room/' + roomId, {
+                method: 'DELETE',
+                headers: {
+                    'X-Owner-Token': ownerToken
+                }
+            })
+                .then(async response => {
+                    if (response.ok) {
+                        alert("Room deleted.");
+                        location.reload();
+                    } else {
+                        let text = await response.text();
+                        alert(text);
+                    }
+                });
+        }
     }
 </script>
 

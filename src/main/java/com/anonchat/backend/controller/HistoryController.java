@@ -8,6 +8,7 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,6 +27,12 @@ public class HistoryController {
     @GetMapping("/api/history/{roomId}")
     public ResponseEntity<List<Object>> getChatHistory(@PathVariable String roomId) {
         return ResponseEntity.ok(chatService.getHistory(roomId));
+    }
+
+    @DeleteMapping("/api/history/{roomId}")
+    public ResponseEntity<String> deleteRoomHistory(@PathVariable String roomId) {
+        chatService.deleteRoom(roomId);
+        return ResponseEntity.ok("Room history deleted successfully.");
     }
 
     // PDF Export API

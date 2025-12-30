@@ -38,11 +38,14 @@ public class WebSocketEventListener {
             var chatMessage = ChatMessage.builder()
                     .type(ChatMessage.MessageType.LEAVE)
                     .sender(username)
-                    .content("left the chat")
+                    .content("left the room.")
                     .build();
 
             // Saves Leave event to history
             chatService.saveMessage(roomId, chatMessage);
+
+            // Update user count
+            chatService.userLeft(roomId);
 
             messagingTemplate.convertAndSend("/topic/" + roomId, chatMessage);
         }
