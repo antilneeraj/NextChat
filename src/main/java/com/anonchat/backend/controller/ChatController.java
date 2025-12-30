@@ -30,14 +30,13 @@ public class ChatController {
                                    SimpMessageHeaderAccessor headerAccessor) {
         validateRoomId(roomId);
 
-        String sessionId = headerAccessor.getSessionId();
+        String ipAddress = (String) headerAccessor.getSessionAttributes().get("IP_ADDRESS");
 
-        if (rateLimitService.isRateLimited(sessionId)) {
-            log.warn("Rate limit exceeded for session: {}", sessionId);
+        if (ipAddress != null && !rateLimitService.allowRequest(ipAddress)) {
             return ChatMessage.builder()
                     .type(ChatMessage.MessageType.CHAT)
                     .sender("System")
-                    .content("🚫 You are typing too fast! Please wait a moment.")
+                    .content("🚫 Slow down! You are typing too fast.")
                     .build();
         }
 
